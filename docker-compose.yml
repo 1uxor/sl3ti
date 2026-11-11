@@ -20,6 +20,9 @@ services:
       DATABASE_URL: postgresql+psycopg://sl3ti:${POSTGRES_PASSWORD}@db:5432/sl3ti
       COOKIE_SECURE: "false"
       CORS_ORIGINS: "http://localhost:3000,http://frontend:3000"
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
+      SUPABASE_BUCKET: ${SUPABASE_BUCKET:-item-images}
     ports: ["8000:8000"]
     depends_on:
       db:

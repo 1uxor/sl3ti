@@ -29,6 +29,13 @@ def establish(db, user, response):
     response.set_cookie("sl3ti_csrf", csrf, httponly=False, secure=secure, samesite="lax", max_age=604800, path="/")
     return {"user": serialize(user, USER_FIELDS), "csrf_token": csrf}
 
+def establish_mobile(db, user):
+    """Create a session and return raw token (for mobile Bearer auth)."""
+    raw, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
+    db.add(LoginSession(token_hash=hashlib.sha256(raw.encode()).hexdigest(), user_id=user.id, csrf_token=csrf, expires_at=now() + timedelta(days=30)))
+    db.commit()
+    return {"token": raw, "user": serialize(user, USER_FIELDS)}
+
 @router.post("/register")
 def register(body: Registration, response: Response, request: Request, db: Session = Depends(get_db)):
     rate_limit("register:" + (request.client.host if request.client else "unknown"))
@@ -85,4 +92,38 @@ def update_profile(body: ProfileUpdate, user: User = Depends(user_from_request),
         user.password_hash = ph.hash(body.new_password)
     db.commit()
     return serialize(user, USER_FIELDS)
+
+# --- Mobile endpoints (Bearer token auth) ---
+
+@router.post("/register/mobile")
+def register_mobile(body: Registration, request: Request, db: Session = Depends(get_db)):
+    rate_limit("register:" + (request.client.host if request.client else "unknown"))
+    email = str(body.email).lower()
+    if db.scalar(select(User.id).where(User.email == email)): fail(409, "Adresse e-mail déjà utilisée")
+    if body.preferred_language not in ("fr", "ar", "en"): fail(422, "Langue invalide")
+    user = User(email=email, password_hash=ph.hash(body.password), full_name=body.full_name.strip(), preferred_language=body.preferred_language)
+    db.add(user); db.flush()
+    return establish_mobile(db, user)
+
+@router.post("/login/mobile")
+def login_mobile(body: Credentials, request: Request, db: Session = Depends(get_db)):
+    rate_limit("login:" + (request.client.host if request.client else "unknown"))
+    user = db.scalar(select(User).where(User.email == str(body.email).lower()))
+    try:
+        valid = bool(user and ph.verify(user.password_hash, body.password))
+    except VerifyMismatchError:
+        valid = False
+    if not valid: fail(401, "Identifiants invalides")
+    return establish_mobile(db, user)
+
+@router.post("/logout/mobile")
+def logout_mobile(request: Request, user: User = Depends(user_from_request), db: Session = Depends(get_db)):
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "): fail(400, "Token requis")
+    raw = auth_header[7:]
+    session = db.get(LoginSession, hashlib.sha256(raw.encode()).hexdigest())
+    if session:
+        db.delete(session)
+        db.commit()
+    return {"ok": True}
 

@@ -1,5 +1,5 @@
 ﻿export type Org = {id:string; name:string; business_type:string; enabled_modules:string[]; role:string};
-export type Item = {id:string; sku:string; name:string; description:string; category_id:string|null; tracking_mode:string; purchase_price:string; sale_price:string; low_stock_threshold:string; is_active:boolean};
+export type Item = {id:string; sku:string; name:string; description:string; category_id:string|null; tracking_mode:string; purchase_price:string; sale_price:string; low_stock_threshold:string; is_active:boolean; image_url:string|null};
 export type Location = {id:string; name:string; type:string};
 export type Balance = {item_id:string; item_name:string; sku:string; location_id:string; location_name:string; quantity:string};
 export type Movement = {id:string; item_id:string; item_name:string; movement_type:string; quantity:string; source_location_id:string|null; destination_location_id:string|null; created_at:string; reference:string};

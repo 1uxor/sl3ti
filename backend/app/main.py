@@ -44,7 +44,8 @@ def health():
 
 @app.middleware("http")
 async def body_limit(request: Request, call_next):
-    if int(request.headers.get("content-length") or 0) > 2_000_000:
+    limit = 10_000_000 if "/image" in request.url.path else 2_000_000
+    if int(request.headers.get("content-length") or 0) > limit:
         return JSONResponse({"detail": "Requête trop volumineuse"}, status_code=413)
     return await call_next(request)
 

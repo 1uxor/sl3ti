@@ -9,7 +9,7 @@ from .db import get_db
 from .models import Category, Contact, Item, Location, Organization, OrganizationMember, StockBalance, StockMovement, User, uid
 
 router = APIRouter(prefix="/api/v1", tags=["core"])
-ITEM_FIELDS = ("id","category_id","sku","name","description","item_type","tracking_mode","unit","purchase_price","sale_price","low_stock_threshold","is_active","created_at")
+ITEM_FIELDS = ("id","category_id","sku","name","description","item_type","tracking_mode","unit","purchase_price","sale_price","low_stock_threshold","is_active","image_url","created_at")
 LOCATION_FIELDS = ("id","name","type","description","is_active")
 CONTACT_FIELDS = ("id","kind","name","phone","email","address")
 
@@ -123,6 +123,7 @@ class ItemIn(BaseModel):
     purchase_price: Decimal = Field(default=Decimal("0"), ge=0)
     sale_price: Decimal = Field(default=Decimal("0"), ge=0)
     low_stock_threshold: Decimal = Field(default=Decimal("0"), ge=0)
+    image_url: str | None = None
 
 class ItemPatch(BaseModel):
     category_id: str | None = None
@@ -134,6 +135,7 @@ class ItemPatch(BaseModel):
     sale_price: Decimal | None = Field(default=None, ge=0)
     low_stock_threshold: Decimal | None = Field(default=None, ge=0)
     is_active: bool | None = None
+    image_url: str | None = None
 
 def check_category(db, org_id, category_id):
     if category_id and not db.scalar(select(Category.id).where(Category.organization_id == org_id, Category.id == category_id)): fail(404, "Catégorie introuvable")
@@ -182,6 +184,38 @@ def patch_item(item_id: str, body: ItemPatch, member: OrganizationMember = Depen
     audit(db, member.organization_id, user.id, "update", "item", x.id)
     db.commit()
     return serialize(x, ITEM_FIELDS)
+
+@router.post("/items/{item_id}/image")
+async def upload_item_image(item_id: str, file: UploadFile = File(...), member: OrganizationMember = Depends(tenant), db: Session = Depends(get_db), user: User = Depends(user_from_request)):
+    require(member, "write")
+    x = db.scalar(select(Item).where(Item.organization_id == member.organization_id, Item.id == item_id))
+    if not x: fail(404, "Article introuvable")
+    from .storage import upload_image, delete_image
+    file_bytes = await file.read()
+    try:
+        url = await upload_image(org_id=member.organization_id, file_bytes=file_bytes, content_type=file.content_type or "image/jpeg", original_filename=file.filename or "image.jpg")
+    except ValueError as e:
+        fail(422, str(e))
+    except RuntimeError as e:
+        fail(502, str(e))
+    if x.image_url:
+        await delete_image(x.image_url)
+    x.image_url = url
+    audit(db, member.organization_id, user.id, "upload_image", "item", x.id)
+    db.commit()
+    return {"image_url": url}
+
+@router.delete("/items/{item_id}/image", status_code=204)
+async def delete_item_image(item_id: str, member: OrganizationMember = Depends(tenant), db: Session = Depends(get_db), user: User = Depends(user_from_request)):
+    require(member, "write")
+    x = db.scalar(select(Item).where(Item.organization_id == member.organization_id, Item.id == item_id))
+    if not x: fail(404, "Article introuvable")
+    if x.image_url:
+        from .storage import delete_image
+        await delete_image(x.image_url)
+        x.image_url = None
+        audit(db, member.organization_id, user.id, "delete_image", "item", x.id)
+        db.commit()
 
 @router.delete("/items/{item_id}", status_code=204)
 def delete_item(item_id: str, member: OrganizationMember = Depends(tenant), db: Session = Depends(get_db), user: User = Depends(user_from_request)):

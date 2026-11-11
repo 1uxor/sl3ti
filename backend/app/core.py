@@ -35,14 +35,23 @@ def audit(db, org_id, user_id, action, entity_type, entity_id, details=None):
     db.add(AuditLog(organization_id=org_id, actor_id=user_id, action=action, entity_type=entity_type, entity_id=entity_id, details=details or {}))
 
 def user_from_request(request: Request, db: Session = Depends(get_db)):
-    raw = request.cookies.get("sl3ti_session")
+    # Try Bearer token first (mobile), then cookie (web)
+    raw = None
+    is_bearer = False
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        raw = auth_header[7:]
+        is_bearer = True
+    else:
+        raw = request.cookies.get("sl3ti_session")
     if not raw: fail(401, "Connexion requise")
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     session = db.get(LoginSession, token_hash)
     if not session: fail(401, "Session invalide")
     expires = session.expires_at.replace(tzinfo=timezone.utc) if session.expires_at.tzinfo is None else session.expires_at
     if expires <= now(): fail(401, "Session expirée")
-    if request.method not in ("GET", "HEAD", "OPTIONS"):
+    # CSRF check only for cookie-based auth (Bearer tokens are CSRF-immune)
+    if not is_bearer and request.method not in ("GET", "HEAD", "OPTIONS"):
         if request.headers.get("X-CSRF-Token") != session.csrf_token:
             fail(403, "Jeton CSRF invalide")
     user = db.get(User, session.user_id)

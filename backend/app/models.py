@@ -78,6 +78,7 @@ class Item(Base):
     sale_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     low_stock_threshold: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     __table_args__ = (UniqueConstraint("organization_id", "id"), UniqueConstraint("organization_id", "sku"), ForeignKeyConstraint(["organization_id", "category_id"], ["categories.organization_id", "categories.id"]), CheckConstraint("purchase_price >= 0 AND sale_price >= 0 AND low_stock_threshold >= 0"))
 
