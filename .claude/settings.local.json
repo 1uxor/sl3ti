@@ -15,7 +15,13 @@
       "Bash(cd \"/c/my things/SAAS1\" && git branch -M main && git push -u origin main 2>&1)",
       "Bash(cd \"/c/my things/SAAS1\" && git commit --amend -m \"$\\(cat <<'EOF'\nInitial commit: Sl3ti SaaS inventory management platform\n\nMulti-tenant SaaS with FastAPI backend, Next.js frontend, PostgreSQL.\nFeatures: auth, RBAC, stock management, equipment tracking, rentals, i18n \\(FR/AR/EN\\).\nEOF\n\\)\" 2>&1)",
       "Bash(cd \"/c/my things/SAAS1\" && git push --force origin main 2>&1)",
-      "Bash(flutter:*)"
+      "Bash(flutter:*)",
+      "Bash(cd \"/c/my things/SAAS1\" && docker compose up --build -d backend 2>&1)",
+      "Bash(cd \"/c/my things/SAAS1\" && docker compose up -d frontend 2>&1)",
+      "Bash(cd:*)",
+      "Bash(cd \"/c/my things/SAAS1\" && docker compose up -d adminer 2>&1)",
+      "Bash(head:*)",
+      "Bash(tail:*)"
     ]
   }
 }

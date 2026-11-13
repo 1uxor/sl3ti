@@ -34,3 +34,23 @@ export async function downloadCsv(path:string,org:string,name:string){
   const blob=await response.blob(); const url=URL.createObjectURL(blob); const a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
+export async function uploadItemImage(itemId: string, file: File, org: string): Promise<{ image_url: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch("/api/v1/items/" + itemId + "/image", {
+    method: "POST",
+    body: form,
+    headers: { "X-Organization-ID": org, "X-CSRF-Token": cookie("sl3ti_csrf") },
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.detail || "Upload impossible");
+  }
+  return response.json();
+}
+
+export async function deleteItemImage(itemId: string, org: string): Promise<void> {
+  await api<void>("/items/" + itemId + "/image", { method: "DELETE" }, org);
+}
+

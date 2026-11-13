@@ -1,5 +1,5 @@
 from decimal import Decimal
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -309,7 +309,7 @@ def update_organization(body: OrgUpdate, member: OrganizationMember = Depends(te
 # CSV catalog exchange. The full file is validated before committing any row.
 import csv
 import io
-from fastapi import File, UploadFile, Response
+from fastapi import Response
 from pydantic import ValidationError
 
 @router.get("/items.csv")
